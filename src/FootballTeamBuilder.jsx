@@ -161,6 +161,25 @@ const POSITION_BG = {
 
 const dice_faces = ["⚀","⚁","⚂","⚃","⚄","⚅"];
 
+// ── Default theme ─────────────────────────────────────────────────────────────
+const DEFAULT_THEME = {
+  bgPage:    '#0b0e15',
+  bgCard:    '#0f1117',
+  bgSurface: '#181c25',
+  gold:      '#f5c842',
+  posGOL:    '#f59e0b',
+  posLAT:    '#3b82f6',
+  posZAG:    '#22c55e',
+  posVOL:    '#a855f7',
+  posMEI:    '#f97316',
+  posATA:    '#ef4444',
+  // Fonts (scale factor 0.7–1.5, base=1.0)
+  fontScale:   1.0,
+  fontTitle:   1.0,
+  fontBody:    1.0,
+  fontBadge:   1.0,
+};
+
 // ── Styles ──────────────────────────────────────────────────────────────────
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;1,400&display=swap');
@@ -657,8 +676,8 @@ function getPitchRows(mainTeam, formation) {
 }
 
 // ── Player Card ───────────────────────────────────────────────────────────────
-function PlayerCard({ player, actions }) {
-  const bg = POSITION_BG[player.position];
+function PlayerCard({ player, actions, posBg }) {
+  const bg = (posBg || POSITION_BG)[player.position];
   return (
     <div className="ftb-player">
       <span className="ftb-number">#{player.number}</span>
@@ -675,7 +694,7 @@ function PlayerCard({ player, actions }) {
 }
 
 // ── Pitch Visual ──────────────────────────────────────────────────────────────
-function PitchView({ mainTeam, formation, onRemove }) {
+function PitchView({ mainTeam, formation, onRemove, posBg }) {
   const rows = getPitchRows(mainTeam, formation);
   if (mainTeam.length === 0) {
     return (
@@ -693,7 +712,7 @@ function PitchView({ mainTeam, formation, onRemove }) {
         <div className="pitch-row" key={ri}>
           {row.players.map(p => (
             <div className="pitch-player" key={p.id} onClick={() => onRemove(p)} title={`Remover ${p.name}`}>
-              <div className="pitch-avatar" style={{ background: POSITION_BG[p.position] }}>
+              <div className="pitch-avatar" style={{ background: posBg[p.position] }}>
                 {p.position}
               </div>
               <div className="pitch-name">{p.name.split(' ')[0]}</div>
@@ -766,8 +785,199 @@ function SavedTeamCard({ team, onDelete, onExport }) {
   );
 }
 
+// ── Theme Panel ───────────────────────────────────────────────────────────────
+function ThemePanel({ theme, setTheme, onClose }) {
+  const [tab, setTab] = useState('cores');
+  const set = (key, val) => setTheme(t => ({ ...t, [key]: val }));
+
+  const muted = '#7a8099';
+  const border = '1px solid rgba(255,255,255,0.08)';
+
+  const Section = ({ label, children }) => (
+    <div style={{ marginBottom:20 }}>
+      <div style={{ fontSize:'0.62rem', color:muted, letterSpacing:2.5, textTransform:'uppercase', fontWeight:700, marginBottom:10 }}>{label}</div>
+      {children}
+    </div>
+  );
+
+  const Swatch = ({ label, colorKey }) => (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+      <div style={{ position:'relative', width:40, height:40 }}>
+        <div style={{ width:40, height:40, borderRadius:9, background:theme[colorKey], border:'2px solid rgba(255,255,255,0.15)', boxShadow:'0 2px 10px rgba(0,0,0,0.5)' }} />
+        <input type="color" value={theme[colorKey]} onChange={e => set(colorKey, e.target.value)}
+          style={{ position:'absolute', inset:0, opacity:0, cursor:'pointer', width:'100%', height:'100%', border:'none' }} />
+      </div>
+      <span style={{ fontSize:'0.6rem', color:muted, textAlign:'center', maxWidth:46 }}>{label}</span>
+    </div>
+  );
+
+  const FontSlider = ({ label, scaleKey, min=0.6, max=1.6, hint }) => {
+    const val = theme[scaleKey];
+    const pct = ((val - min) / (max - min)) * 100;
+    return (
+      <div style={{ marginBottom:14 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+          <span style={{ fontSize:'0.78rem', color:'#e8eaf0', fontWeight:600 }}>{label}</span>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            {hint && <span style={{ fontSize:'0.62rem', color:muted, fontStyle:'italic' }}>{hint}</span>}
+            <span style={{ fontSize:'0.72rem', color:theme.gold, fontFamily:'Bebas Neue', letterSpacing:1, minWidth:30, textAlign:'right' }}>{Math.round(val * 100)}%</span>
+            <button onClick={() => set(scaleKey, DEFAULT_THEME[scaleKey])}
+              style={{ background:'none', border:'none', color:muted, cursor:'pointer', fontSize:'0.75rem', padding:'0 2px' }} title="Resetar">↺</button>
+          </div>
+        </div>
+        <div style={{ position:'relative', height:6, borderRadius:99, background:'rgba(255,255,255,0.08)' }}>
+          <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${pct}%`, borderRadius:99, background:`linear-gradient(90deg, ${theme.gold}88, ${theme.gold})`, transition:'width 0.1s' }} />
+          <input type="range" min={min} max={max} step={0.05} value={val}
+            onChange={e => set(scaleKey, parseFloat(e.target.value))}
+            style={{ position:'absolute', inset:0, width:'100%', opacity:0, cursor:'pointer', height:'100%', margin:0 }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:3, fontSize:'0.58rem', color:muted }}>
+          <span>Pequeno</span><span>Normal</span><span>Grande</span>
+        </div>
+      </div>
+    );
+  };
+
+  const presets = [
+    { name:'Dark (padrão)', t:{ bgPage:'#0b0e15', bgCard:'#0f1117', bgSurface:'#181c25', gold:'#f5c842', posGOL:'#f59e0b', posLAT:'#3b82f6', posZAG:'#22c55e', posVOL:'#a855f7', posMEI:'#f97316', posATA:'#ef4444', fontScale:1.0, fontTitle:1.0, fontBody:1.0, fontBadge:1.0 } },
+    { name:'Suave', t:{ bgPage:'#1a1f2e', bgCard:'#222840', bgSurface:'#2a3150', gold:'#c9a84c', posGOL:'#b08020', posLAT:'#3567a8', posZAG:'#2e7d52', posVOL:'#7b4fa6', posMEI:'#c2622a', posATA:'#b03030', fontScale:1.0, fontTitle:1.0, fontBody:1.0, fontBadge:1.0 } },
+    { name:'Noturno', t:{ bgPage:'#10141c', bgCard:'#161a24', bgSurface:'#1e2330', gold:'#e0b030', posGOL:'#a07820', posLAT:'#2a5090', posZAG:'#1e6040', posVOL:'#603890', posMEI:'#a04a18', posATA:'#903030', fontScale:1.0, fontTitle:1.0, fontBody:1.0, fontBadge:1.0 } },
+    { name:'Azul Navy', t:{ bgPage:'#0d1520', bgCard:'#111e2d', bgSurface:'#162438', gold:'#4da6ff', posGOL:'#d4a800', posLAT:'#1a6fd4', posZAG:'#1a8a50', posVOL:'#8040c0', posMEI:'#d46020', posATA:'#c03030', fontScale:1.0, fontTitle:1.0, fontBody:1.0, fontBadge:1.0 } },
+    { name:'Verde Campo', t:{ bgPage:'#0a160d', bgCard:'#0f1f13', bgSurface:'#162819', gold:'#ffd700', posGOL:'#e8a000', posLAT:'#2060c0', posZAG:'#1a7040', posVOL:'#7030a0', posMEI:'#d06020', posATA:'#c02020', fontScale:1.0, fontTitle:1.0, fontBody:1.0, fontBadge:1.0 } },
+  ];
+
+  const tabStyle = (t) => ({
+    flex:1, padding:'8px 0', background:'none', border:'none',
+    borderBottom: tab===t ? `2px solid ${theme.gold}` : '2px solid transparent',
+    color: tab===t ? theme.gold : muted,
+    cursor:'pointer', fontFamily:'Bebas Neue', fontSize:'0.9rem', letterSpacing:2,
+    transition:'all 0.15s',
+  });
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:200, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'78px 20px 20px' }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#181c25', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, width:340, boxShadow:'0 20px 60px rgba(0,0,0,0.8)', display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 100px)' }}>
+
+        {/* Header */}
+        <div style={{ padding:'14px 20px', borderBottom:border, display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <div style={{ fontFamily:'Bebas Neue', fontSize:'1.1rem', letterSpacing:3, color:theme.gold }}>🎨 Cores / Fontes</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:muted, cursor:'pointer', fontSize:'1.1rem', lineHeight:1 }}>✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:'flex', borderBottom:border, flexShrink:0 }}>
+          <button style={tabStyle('cores')} onClick={() => setTab('cores')}>Cores</button>
+          <button style={tabStyle('fontes')} onClick={() => setTab('fontes')}>Fontes</button>
+          <button style={tabStyle('presets')} onClick={() => setTab('presets')}>Paletas</button>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ padding:'16px 20px', overflowY:'auto', flex:1 }}>
+
+          {/* ── CORES TAB ── */}
+          {tab === 'cores' && <>
+            <Section label="Fundos">
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+                <Swatch label="Página" colorKey="bgPage" />
+                <Swatch label="Card" colorKey="bgCard" />
+                <Swatch label="Painel" colorKey="bgSurface" />
+                <Swatch label="Dourado" colorKey="gold" />
+              </div>
+            </Section>
+            <Section label="Posições">
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+                <Swatch label="GOL" colorKey="posGOL" />
+                <Swatch label="LAT" colorKey="posLAT" />
+                <Swatch label="ZAG" colorKey="posZAG" />
+                <Swatch label="VOL" colorKey="posVOL" />
+                <Swatch label="MEI" colorKey="posMEI" />
+                <Swatch label="ATA" colorKey="posATA" />
+              </div>
+            </Section>
+            {/* Mini preview */}
+            <div style={{ background:theme.bgCard, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:12 }}>
+              <div style={{ fontSize:'0.6rem', color:muted, letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>Prévia</div>
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+                {Object.entries({ GOL:theme.posGOL, LAT:theme.posLAT, ZAG:theme.posZAG, VOL:theme.posVOL, MEI:theme.posMEI, ATA:theme.posATA }).map(([pos, col]) => (
+                  <div key={pos} style={{ background:col, borderRadius:4, padding:'2px 8px', fontSize:'0.72rem', fontFamily:'Bebas Neue', letterSpacing:1, color:'#000' }}>{pos}</div>
+                ))}
+              </div>
+              <div style={{ fontFamily:'Bebas Neue', fontSize:'1rem', color:theme.gold, letterSpacing:2 }}>⚽ Montador de Time</div>
+            </div>
+          </>}
+
+          {/* ── FONTES TAB ── */}
+          {tab === 'fontes' && <>
+            <Section label="Escala geral">
+              <FontSlider label="Tamanho geral" scaleKey="fontScale" hint="multiplica tudo" />
+            </Section>
+            <Section label="Ajustes finos">
+              <FontSlider label="Títulos e seções" scaleKey="fontTitle" hint="logos, cabeçalhos" />
+              <FontSlider label="Textos e nomes" scaleKey="fontBody"  hint="nomes, equipes, labels" />
+              <FontSlider label="Badges de posição" scaleKey="fontBadge" hint="GOL, LAT, ZAG..." />
+            </Section>
+            {/* Font preview */}
+            <div style={{ background:theme.bgCard, border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:14 }}>
+              <div style={{ fontSize:'0.6rem', color:muted, letterSpacing:2, textTransform:'uppercase', marginBottom:10 }}>Prévia de fontes</div>
+              <div style={{ fontFamily:'Bebas Neue', fontSize:`calc(1.4rem * ${theme.fontScale} * ${theme.fontTitle})`, color:theme.gold, letterSpacing:2, marginBottom:6 }}>
+                ⚽ Montador de Time
+              </div>
+              <div style={{ fontSize:`calc(0.9rem * ${theme.fontScale} * ${theme.fontBody})`, color:'#e8eaf0', fontWeight:600, marginBottom:2 }}>
+                Pelé — Brasil 1970
+              </div>
+              <div style={{ fontSize:`calc(0.72rem * ${theme.fontScale} * ${theme.fontBody})`, color:muted, fontStyle:'italic', marginBottom:8 }}>
+                Meia / #10
+              </div>
+              <div style={{ display:'flex', gap:5 }}>
+                {['GOL','LAT','ZAG','VOL','MEI','ATA'].map(pos => (
+                  <div key={pos} style={{ background:theme.posGOL, borderRadius:4, padding:'2px 7px', fontSize:`calc(0.75rem * ${theme.fontScale} * ${theme.fontBadge})`, fontFamily:'Bebas Neue', color:'#000' }}>{pos}</div>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {/* ── PALETAS TAB ── */}
+          {tab === 'presets' && <>
+            <Section label="Paletas predefinidas">
+              <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%' }}>
+                {presets.map(p => (
+                  <button key={p.name} onClick={() => setTheme(prev => ({ ...prev, ...p.t }))}
+                    style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:8, padding:'10px 14px', cursor:'pointer', color:'#e8eaf0', fontSize:'0.82rem', textAlign:'left', transition:'background 0.15s' }}>
+                    <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                      {[p.t.bgSurface, p.t.gold, p.t.posGOL, p.t.posLAT, p.t.posZAG, p.t.posATA].map((c, i) => (
+                        <div key={i} style={{ width:11, height:11, borderRadius:'50%', background:c, border:'1px solid rgba(255,255,255,0.15)' }} />
+                      ))}
+                    </div>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </Section>
+            <div style={{ fontSize:'0.68rem', color:muted, fontStyle:'italic', marginTop:4 }}>
+              As paletas substituem apenas as cores, mantendo suas configurações de fonte.
+            </div>
+          </>}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'11px 20px', borderTop:border, display:'flex', gap:8, justifyContent:'flex-end', flexShrink:0 }}>
+          <button onClick={() => setTheme(prev => ({ ...prev, fontScale:1, fontTitle:1, fontBody:1, fontBadge:1 }))}
+            style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:6, color:muted, cursor:'pointer', padding:'6px 12px', fontSize:'0.72rem' }}>
+            ↺ Fontes padrão
+          </button>
+          <button onClick={() => setTheme(DEFAULT_THEME)}
+            style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:6, color:muted, cursor:'pointer', padding:'6px 12px', fontSize:'0.72rem' }}>
+            ↺ Tudo padrão
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Player List Modal ─────────────────────────────────────────────────────────
-function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, completedTeams, mainTeam, reserves, selectedPlayers, drawnPlayers, discardedThisRound, onClose }) {
+function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, completedTeams, mainTeam, reserves, selectedPlayers, drawnPlayers, discardedThisRound, onClose, posBg }) {
   const [search, setSearch] = useState('');
   const [filterPos, setFilterPos] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
@@ -966,7 +1176,7 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
                     ) : (
                       /* Normal row */
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span className="ftb-pos-badge" style={{ background: POSITION_BG[p.position], fontSize:'0.63rem', padding:'2px 5px', flexShrink:0 }}>{p.position}</span>
+                        <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.63rem', padding:'2px 5px', flexShrink:0 }}>{p.position}</span>
                         <span style={{ fontFamily:'Bebas Neue', fontSize:'0.95rem', color:'var(--muted)', minWidth:22, flexShrink:0 }}>#{p.number}</span>
                         <span style={{ flex:1, fontSize:'0.87rem', fontWeight:600 }}>{p.name}</span>
                         {gameStarted ? (
@@ -1025,6 +1235,14 @@ export default function FootballTeamBuilder() {
   const [gameStarted, setGameStarted] = useState(false);
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [customPlayers, setCustomPlayers] = useState(PLAYERS);
+  const [theme, setTheme] = useState(DEFAULT_THEME);
+  const [showTheme, setShowTheme] = useState(false);
+
+  // Derived position colors from theme (used everywhere badges appear)
+  const posBg = {
+    GOL: theme.posGOL, LAT: theme.posLAT, ZAG: theme.posZAG,
+    VOL: theme.posVOL, MEI: theme.posMEI, ATA: theme.posATA,
+  };
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const canAddToMain = (player) => {
@@ -1193,7 +1411,40 @@ export default function FootballTeamBuilder() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{css}</style>
+      <style>{css + `
+        :root {
+          --gold: ${theme.gold};
+          --card-bg: ${theme.bgCard};
+          --surface: ${theme.bgSurface};
+          --fscale: ${theme.fontScale};
+          --ftitle: calc(${theme.fontTitle} * ${theme.fontScale});
+          --fbody:  calc(${theme.fontBody}  * ${theme.fontScale});
+          --fbadge: calc(${theme.fontBadge} * ${theme.fontScale});
+        }
+        .ftb-root { background: ${theme.bgPage}; }
+        .ftb-hero { background: ${theme.bgPage}; }
+        .ftb-complete-badge { background: linear-gradient(135deg, ${theme.gold}aa, ${theme.gold}); }
+        .ftb-form-btn.active { background: ${theme.gold}; border-color: ${theme.gold}; }
+        .ftb-roll-btn { background: linear-gradient(135deg, ${theme.gold}cc, ${theme.gold}); }
+        .ftb-progress-fill { background: linear-gradient(90deg, ${theme.posZAG}, ${theme.gold}); }
+        .ftb-action-btn.gold { border-color: ${theme.gold}; color: ${theme.gold}; }
+        .ftb-section-title { color: ${theme.gold}; font-size: calc(1.2rem * var(--ftitle)); }
+        .ftb-toggle.on { border-color: ${theme.gold}; color: ${theme.gold}; background: ${theme.gold}22; }
+        .ftb-saved-title { color: ${theme.gold}; }
+        .ftb-logo { color: ${theme.gold}; font-size: calc(2.4rem * var(--ftitle)); }
+        .ftb-subtitle { font-size: calc(0.75rem * var(--ftitle)); }
+        .ftb-player-name { font-size: calc(0.9rem * var(--fbody)); }
+        .ftb-player-team { font-size: calc(0.72rem * var(--fbody)); }
+        .ftb-number { font-size: calc(1.3rem * var(--fbody)); }
+        .ftb-pos-badge { font-size: calc(0.75rem * var(--fbadge)); }
+        .ftb-form-btn { font-size: calc(1rem * var(--ftitle)); }
+        .ftb-roll-btn { font-size: calc(1.1rem * var(--ftitle)); }
+        .ftb-action-btn { font-size: calc(0.9rem * var(--fbody)); }
+        .ftb-progress-label { font-size: calc(0.78rem * var(--fbody)); }
+        .ftb-toggle { font-size: calc(0.72rem * var(--fbody)); }
+        .pitch-name { font-size: calc(0.6rem * var(--fbody)); }
+        .pitch-avatar { font-size: calc(0.8rem * var(--fbadge)); }
+      `}</style>
       <div className="ftb-root">
         {/* Header */}
         <div className="ftb-hero">
@@ -1207,6 +1458,9 @@ export default function FootballTeamBuilder() {
             )}
             <button className="ftb-action-btn" onClick={() => setShowPlayerList(true)} style={{ borderColor: gameStarted ? 'rgba(255,255,255,0.15)' : '#22c55e', color: gameStarted ? 'var(--muted)' : '#22c55e' }}>
               <Users size={13} /> {gameStarted ? 'Ver Jogadores' : 'Editar Jogadores'}
+            </button>
+            <button className="ftb-action-btn" onClick={() => setShowTheme(!showTheme)} style={{ borderColor: showTheme ? theme.gold : 'var(--border)', color: showTheme ? theme.gold : 'var(--text)' }}>
+              🎨 Cores/Fontes
             </button>
             <button className="ftb-action-btn gold" onClick={confirmSaveTeam} disabled={mainTeam.length===0}>
               <Save size={13} /> Salvar Time
@@ -1242,6 +1496,9 @@ export default function FootballTeamBuilder() {
           </div>
         )}
 
+        {/* Theme Panel */}
+        {showTheme && <ThemePanel theme={theme} setTheme={setTheme} onClose={() => setShowTheme(false)} />}
+
         {/* Player List Modal */}
         {showPlayerList && <PlayerListModal
           customPlayers={customPlayers}
@@ -1254,6 +1511,7 @@ export default function FootballTeamBuilder() {
           drawnPlayers={drawnPlayers}
           discardedThisRound={discardedThisRound}
           onClose={() => setShowPlayerList(false)}
+          posBg={posBg}
         />}
 
         <div className="ftb-body">
@@ -1320,7 +1578,7 @@ export default function FootballTeamBuilder() {
                   Sorteados — escolha o destino
                 </div>
                 {drawnPlayers.map(p => (
-                  <PlayerCard key={p.id} player={p} actions={
+                  <PlayerCard key={p.id} player={p} posBg={posBg} actions={
                     <>
                       <button className="ftb-btn btn-main" onClick={()=>selectPlayer(p)}>
                         <ArrowDown size={11}/> Guardar
@@ -1363,7 +1621,7 @@ export default function FootballTeamBuilder() {
                         border: `1px solid ${avail === 0 ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`,
                         borderRadius:6, padding:'4px 8px'
                       }}>
-                        <span className="ftb-pos-badge" style={{ background: POSITION_BG[pos], fontSize:'0.65rem', padding:'2px 5px' }}>{pos}</span>
+                        <span className="ftb-pos-badge" style={{ background: posBg[pos], fontSize:'0.65rem', padding:'2px 5px' }}>{pos}</span>
                         <span style={{
                           fontFamily:'Bebas Neue', fontSize:'0.9rem',
                           color: avail === 0 ? '#ef4444' : avail <= 2 ? '#f59e0b' : '#22c55e'
@@ -1386,7 +1644,7 @@ export default function FootballTeamBuilder() {
                   const canMain = canAddToMain(p);
                   const canRes  = canAddToReserves(p);
                   return (
-                    <PlayerCard key={p.id} player={p} actions={
+                    <PlayerCard key={p.id} player={p} posBg={posBg} actions={
                       <>
                         {canMain && (
                           <button className="ftb-btn btn-main" onClick={()=>moveToMain(p)} title="Titular">
@@ -1416,7 +1674,7 @@ export default function FootballTeamBuilder() {
           <div className="ftb-panel">
             <div className="ftb-section-title">Campo — {formation}</div>
 
-            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} />
+            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} posBg={posBg} />
 
             {/* Reserves */}
             <div className="ftb-section-title">
@@ -1427,7 +1685,7 @@ export default function FootballTeamBuilder() {
                 ? <span className="ftb-empty-hint">Banco vazio</span>
                 : reserves.map(p => (
                     <div className="ftb-reserve-chip" key={p.id} onClick={()=>removeFromReserves(p)} title="Devolver">
-                      <span className="ftb-pos-badge" style={{ background: POSITION_BG[p.position], fontSize:'0.65rem', padding:'2px 5px' }}>{p.position}</span>
+                      <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.65rem', padding:'2px 5px' }}>{p.position}</span>
                       <span style={{ fontSize:'0.78rem' }}>{p.name}</span>
                     </div>
                   ))
@@ -1443,11 +1701,11 @@ export default function FootballTeamBuilder() {
                   if (!inPos.length) return null;
                   return (
                     <div key={pos} style={{ marginBottom:4 }}>
-                      <div style={{ fontSize:'0.68rem', color: POSITION_BG[pos], letterSpacing:2, marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>
+                      <div style={{ fontSize:'0.68rem', color: posBg[pos], letterSpacing:2, marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>
                         ── {POSITION_LABELS[pos]}
                       </div>
                       {inPos.map(p => (
-                        <PlayerCard key={p.id} player={p} actions={
+                        <PlayerCard key={p.id} player={p} posBg={posBg} actions={
                           <button className="ftb-btn btn-remove" onClick={()=>removeFromMain(p)} title="Remover">
                             <Trash2 size={11}/>
                           </button>
