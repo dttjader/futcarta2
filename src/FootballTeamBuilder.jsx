@@ -118,7 +118,7 @@ const PLAYERS = [
   { id: 123, name: "Zé Carlos", position: "VOL", team: "Outros Jogadores", number: 5 },
   { id: 124, name: "Marinho Chagas", position: "LAT", team: "Outros Jogadores", number: 6 },
   { id: 125, name: "Capitão", position: "ATA", team: "Outros Jogadores", number: 7 },
-  { id: 126, name: "Renato Gaúcho", position: "MEI", team: "Outros Jogadores", number: 8 },
+  { id: 126, name: "Renato Gaúcho", position: "MEI", position2: "ATA", team: "Outros Jogadores", number: 8 },
   { id: 127, name: "Careca", position: "MEI", team: "Outros Jogadores", number: 9 },
   { id: 128, name: "Zenon", position: "MEI", team: "Outros Jogadores", number: 10 },
   { id: 129, name: "Bozó", position: "ATA", team: "Outros Jogadores", number: 11 }
@@ -676,12 +676,34 @@ function getPitchRows(mainTeam, formation) {
 }
 
 // ── Player Card ───────────────────────────────────────────────────────────────
-function PlayerCard({ player, actions, posBg }) {
-  const bg = (posBg || POSITION_BG)[player.position];
+function PlayerCard({ player, actions, posBg, activePos, onTogglePos }) {
+  // activePos: the currently active position for this card (may differ from player.position if toggled)
+  const effectivePos = activePos || player.position;
+  const bg = (posBg || POSITION_BG)[effectivePos];
+  const bg2 = player.position2 ? (posBg || POSITION_BG)[player.position2] : null;
+
   return (
     <div className="ftb-player">
       <span className="ftb-number">#{player.number}</span>
-      <span className="ftb-pos-badge" style={{ background: bg }}>{player.position}</span>
+      <div style={{ display:'flex', flexDirection:'column', gap:3, alignItems:'center' }}>
+        <span className="ftb-pos-badge" style={{ background: bg }}>{effectivePos}</span>
+        {player.position2 && onTogglePos && (
+          <button
+            onClick={onTogglePos}
+            title={`Alternar para ${effectivePos === player.position ? player.position2 : player.position}`}
+            style={{
+              background: bg2,
+              border: effectivePos === player.position2 ? '2px solid #fff' : '2px solid transparent',
+              borderRadius:4, padding:'1px 5px', cursor:'pointer',
+              fontSize:'0.6rem', fontFamily:'Bebas Neue', letterSpacing:1,
+              color:'#000', opacity: effectivePos === player.position ? 0.55 : 1,
+              transition:'all 0.15s', lineHeight:1.4,
+            }}
+          >
+            {player.position2}
+          </button>
+        )}
+      </div>
       <div className="ftb-player-info">
         <div className="ftb-player-name">{player.name}</div>
         <div className="ftb-player-team">{player.team}</div>
@@ -977,14 +999,14 @@ function ThemePanel({ theme, setTheme, onClose }) {
 }
 
 // ── Player List Modal ─────────────────────────────────────────────────────────
-function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, completedTeams, mainTeam, reserves, selectedPlayers, drawnPlayers, discardedThisRound, onClose, posBg }) {
+function PlayerListModal({ customPlayers, setCustomPlayers, disabledTeams, setDisabledTeams, gameStarted, completedTeams, mainTeam, reserves, selectedPlayers, drawnPlayers, discardedThisRound, onClose, posBg }) {
   const [search, setSearch] = useState('');
   const [filterPos, setFilterPos] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState({ name:'', position:'GOL', team:'', number:'' });
+  const [addForm, setAddForm] = useState({ name:'', position:'GOL', position2:'', team:'', number:'' });
   const [addError, setAddError] = useState('');
 
   const allTeams = [...new Set(customPlayers.map(p => p.team))].sort();
@@ -1019,12 +1041,14 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
 
   const startEdit = (p) => {
     setEditingId(p.id);
-    setEditForm({ name: p.name, position: p.position, team: p.team, number: p.number });
+    setEditForm({ name: p.name, position: p.position, position2: p.position2 || '', team: p.team, number: p.number });
   };
 
   const saveEdit = (id) => {
     if (!editForm.name.trim() || !editForm.team.trim() || !editForm.number) return;
-    setCustomPlayers(customPlayers.map(p => p.id === id ? { ...p, ...editForm, number: Number(editForm.number) } : p));
+    const updated = { ...editForm, number: Number(editForm.number) };
+    if (!updated.position2) delete updated.position2;
+    setCustomPlayers(customPlayers.map(p => p.id === id ? { ...p, ...updated } : p));
     setEditingId(null);
   };
 
@@ -1035,13 +1059,27 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
     if (!addForm.team.trim()) { setAddError('Time obrigatório'); return; }
     if (!addForm.number || isNaN(Number(addForm.number))) { setAddError('Número inválido'); return; }
     const newId = Math.max(...customPlayers.map(p => p.id), 200) + 1;
-    setCustomPlayers([...customPlayers, { id: newId, name: addForm.name.trim(), position: addForm.position, team: addForm.team.trim(), number: Number(addForm.number) }]);
-    setAddForm({ name:'', position:'GOL', team:'', number:'' });
+    const newPlayer = { id: newId, name: addForm.name.trim(), position: addForm.position, team: addForm.team.trim(), number: Number(addForm.number) };
+    if (addForm.position2) newPlayer.position2 = addForm.position2;
+    setCustomPlayers([...customPlayers, newPlayer]);
+    setAddForm({ name:'', position:'GOL', position2:'', team:'', number:'' });
     setAddError('');
     setShowAddForm(false);
   };
 
   const inputStyle = { background:'#0f1117', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'5px 8px', color:'#e8eaf0', fontSize:'0.82rem', outline:'none' };
+
+  const toggleTeam = (teamName) => {
+    setDisabledTeams(prev => {
+      const next = new Set(prev);
+      if (next.has(teamName)) next.delete(teamName);
+      else next.add(teamName);
+      return next;
+    });
+  };
+
+  const enableAllTeams  = () => setDisabledTeams(new Set());
+  const disableAllTeams = () => setDisabledTeams(new Set(allTeams));
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:100, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 16px', overflowY:'auto' }}>
@@ -1067,14 +1105,21 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
         {showAddForm && !gameStarted && (
           <div style={{ padding:'16px 24px', background:'rgba(34,197,94,0.05)', borderBottom:'1px solid rgba(34,197,94,0.15)' }}>
             <div style={{ fontSize:'0.78rem', color:'#22c55e', fontWeight:700, letterSpacing:1, textTransform:'uppercase', marginBottom:10 }}>Novo Jogador</div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 80px 1fr 60px', gap:8, alignItems:'end', flexWrap:'wrap' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 90px 80px 1fr 60px', gap:8, alignItems:'end', flexWrap:'wrap' }}>
               <div>
                 <div style={{ fontSize:'0.65rem', color:'var(--muted)', marginBottom:4 }}>NOME</div>
                 <input style={{ ...inputStyle, width:'100%', boxSizing:'border-box' }} placeholder="Nome do jogador" value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} />
               </div>
               <div>
-                <div style={{ fontSize:'0.65rem', color:'var(--muted)', marginBottom:4 }}>POSIÇÃO</div>
+                <div style={{ fontSize:'0.65rem', color:'var(--muted)', marginBottom:4 }}>POSIÇÃO 1</div>
                 <select style={{ ...inputStyle, width:'100%' }} value={addForm.position} onChange={e => setAddForm({...addForm, position: e.target.value})}>
+                  {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k} – {v}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize:'0.65rem', color:'var(--muted)', marginBottom:4 }}>POSIÇÃO 2 <span style={{opacity:0.6, fontSize:'0.55rem'}}>(opcional)</span></div>
+                <select style={{ ...inputStyle, width:'100%' }} value={addForm.position2 || ''} onChange={e => setAddForm({...addForm, position2: e.target.value})}>
+                  <option value="">— nenhuma —</option>
                   {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k} – {v}</option>)}
                 </select>
               </div>
@@ -1102,27 +1147,46 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
         )}
 
         {/* Filters */}
-        <div style={{ padding:'14px 24px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-          <input
-            placeholder="🔍 Buscar por nome ou time..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ ...inputStyle, flex:1, minWidth:180, padding:'7px 12px' }}
-          />
-          <select value={filterPos} onChange={e => setFilterPos(e.target.value)} style={{ ...inputStyle, minWidth:130 }}>
-            <option value="">Todas as posições</option>
-            {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k} – {v}</option>)}
-          </select>
-          <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} style={{ ...inputStyle, minWidth:160 }}>
-            <option value="">Todos os times</option>
-            {allTeams.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          {(search || filterPos || filterTeam) && (
-            <button onClick={() => { setSearch(''); setFilterPos(''); setFilterTeam(''); }}
-              style={{ ...inputStyle, cursor:'pointer', color:'#f97316', borderColor:'rgba(249,115,22,0.3)', padding:'6px 12px', background:'rgba(249,115,22,0.08)' }}>
-              ✕ Limpar
+        <div style={{ padding:'12px 24px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', gap:8 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            <input
+              placeholder="🔍 Buscar por nome ou time..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ ...inputStyle, flex:1, minWidth:180, padding:'7px 12px' }}
+            />
+            <select value={filterPos} onChange={e => setFilterPos(e.target.value)} style={{ ...inputStyle, minWidth:130 }}>
+              <option value="">Todas as posições</option>
+              {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k} – {v}</option>)}
+            </select>
+            <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} style={{ ...inputStyle, minWidth:160 }}>
+              <option value="">Todos os times</option>
+              {allTeams.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {(search || filterPos || filterTeam) && (
+              <button onClick={() => { setSearch(''); setFilterPos(''); setFilterTeam(''); }}
+                style={{ ...inputStyle, cursor:'pointer', color:'#f97316', borderColor:'rgba(249,115,22,0.3)', padding:'6px 12px', background:'rgba(249,115,22,0.08)' }}>
+                ✕ Limpar
+              </button>
+            )}
+          </div>
+          {/* Team enable/disable quick controls */}
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <span style={{ fontSize:'0.68rem', color:'var(--muted)', letterSpacing:1, textTransform:'uppercase', fontWeight:700 }}>Times no jogo:</span>
+            <button onClick={enableAllTeams}
+              style={{ background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:5, color:'#22c55e', cursor:'pointer', padding:'3px 10px', fontSize:'0.72rem', fontFamily:'Bebas Neue', letterSpacing:1 }}>
+              ✓ Ativar Todos
             </button>
-          )}
+            <button onClick={disableAllTeams}
+              style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:5, color:'#ef4444', cursor:'pointer', padding:'3px 10px', fontSize:'0.72rem', fontFamily:'Bebas Neue', letterSpacing:1 }}>
+              ○ Desativar Todos
+            </button>
+            {disabledTeams.size > 0 && (
+              <span style={{ fontSize:'0.7rem', color:'#ef4444', fontStyle:'italic' }}>
+                {disabledTeams.size} time(s) desativado(s) — {customPlayers.filter(p => disabledTeams.has(p.team)).length} jogadores fora do baralho
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Status legend (game started) */}
@@ -1148,10 +1212,30 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
           {Object.keys(byTeam).length === 0 && (
             <p style={{ color:'var(--muted)', fontStyle:'italic', fontSize:'0.85rem', textAlign:'center', padding:'32px 0' }}>Nenhum jogador encontrado.</p>
           )}
-          {Object.entries(byTeam).map(([teamName, players]) => (
-            <div key={teamName} style={{ marginBottom:18 }}>
-              <div style={{ fontFamily:'Bebas Neue', fontSize:'0.9rem', letterSpacing:2, color:'var(--gold)', marginBottom:6, borderBottom:'1px solid rgba(255,255,255,0.06)', paddingBottom:3, paddingTop:10 }}>
-                {teamName} <span style={{ color:'var(--muted)', fontSize:'0.7rem', fontFamily:'Barlow', letterSpacing:0 }}>({players.length})</span>
+          {Object.entries(byTeam).map(([teamName, players]) => {
+            const isDisabled = disabledTeams.has(teamName);
+            return (
+            <div key={teamName} style={{ marginBottom:18, opacity: isDisabled ? 0.45 : 1, transition:'opacity 0.2s' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, borderBottom:'1px solid rgba(255,255,255,0.06)', paddingBottom:5, paddingTop:10, marginBottom:6 }}>
+                <span style={{ fontFamily:'Bebas Neue', fontSize:'0.9rem', letterSpacing:2, color: isDisabled ? 'var(--muted)' : 'var(--gold)', flex:1 }}>
+                  {teamName} <span style={{ color:'var(--muted)', fontSize:'0.7rem', fontFamily:'Barlow', letterSpacing:0 }}>({players.length})</span>
+                  {isDisabled && <span style={{ marginLeft:8, fontSize:'0.62rem', color:'#ef4444', fontFamily:'Barlow', letterSpacing:1, textTransform:'uppercase', fontWeight:700 }}>● Desativado</span>}
+                </span>
+                <button
+                  onClick={() => toggleTeam(teamName)}
+                  title={isDisabled ? 'Ativar time no jogo' : 'Desativar time no jogo (sem excluir)'}
+                  style={{
+                    background: isDisabled ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
+                    border: `1px solid ${isDisabled ? 'rgba(239,68,68,0.35)' : 'rgba(34,197,94,0.35)'}`,
+                    borderRadius:6, padding:'3px 10px', cursor:'pointer',
+                    color: isDisabled ? '#ef4444' : '#22c55e',
+                    fontFamily:'Bebas Neue', fontSize:'0.72rem', letterSpacing:1,
+                    display:'flex', alignItems:'center', gap:5, flexShrink:0,
+                    transition:'all 0.15s',
+                  }}
+                >
+                  {isDisabled ? '○ Ativar' : '● Ativo'}
+                </button>
               </div>
               {players.map(p => {
                 const isEditing = editingId === p.id;
@@ -1160,23 +1244,40 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
                   <div key={p.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', padding:'6px 0' }}>
                     {isEditing ? (
                       /* Inline edit row */
-                      <div style={{ display:'grid', gridTemplateColumns:'90px 80px 60px 1fr auto', gap:6, alignItems:'center' }}>
-                        <select style={{ ...inputStyle }} value={editForm.position} onChange={e => setEditForm({...editForm, position: e.target.value})}>
-                          {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k}</option>)}
-                        </select>
-                        <input style={{ ...inputStyle }} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Nome" />
-                        <input style={{ ...inputStyle }} type="number" min="1" max="99" value={editForm.number} onChange={e => setEditForm({...editForm, number: e.target.value})} placeholder="Nº" />
-                        <input style={{ ...inputStyle }} value={editForm.team} onChange={e => setEditForm({...editForm, team: e.target.value})} placeholder="Time" list="team-suggestions-edit" />
-                        <datalist id="team-suggestions-edit">{allTeams.map(t => <option key={t} value={t} />)}</datalist>
-                        <div style={{ display:'flex', gap:4 }}>
-                          <button onClick={() => saveEdit(p.id)} style={{ background:'#22c55e', border:'none', borderRadius:5, color:'#000', fontFamily:'Bebas Neue', fontSize:'0.8rem', padding:'4px 10px', cursor:'pointer' }}>✓</button>
-                          <button onClick={() => setEditingId(null)} style={{ background:'#374151', border:'none', borderRadius:5, color:'#9ca3af', fontFamily:'Bebas Neue', fontSize:'0.8rem', padding:'4px 8px', cursor:'pointer' }}>✕</button>
+                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'90px 90px 60px 1fr auto', gap:6, alignItems:'center' }}>
+                          <div>
+                            <div style={{ fontSize:'0.58rem', color:'#7a8099', marginBottom:2 }}>POSIÇÃO 1</div>
+                            <select style={{ ...inputStyle, width:'100%' }} value={editForm.position} onChange={e => setEditForm({...editForm, position: e.target.value})}>
+                              {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <div style={{ fontSize:'0.58rem', color:'#7a8099', marginBottom:2 }}>POSIÇÃO 2 <span style={{opacity:0.6}}>(opcional)</span></div>
+                            <select style={{ ...inputStyle, width:'100%' }} value={editForm.position2 || ''} onChange={e => setEditForm({...editForm, position2: e.target.value})}>
+                              <option value="">— nenhuma —</option>
+                              {Object.entries(POSITION_LABELS).map(([k,v]) => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          <input style={{ ...inputStyle }} type="number" min="1" max="99" value={editForm.number} onChange={e => setEditForm({...editForm, number: e.target.value})} placeholder="Nº" />
+                          <input style={{ ...inputStyle }} value={editForm.team} onChange={e => setEditForm({...editForm, team: e.target.value})} placeholder="Time" list="team-suggestions-edit" />
+                          <datalist id="team-suggestions-edit">{allTeams.map(t => <option key={t} value={t} />)}</datalist>
+                          <div style={{ display:'flex', gap:4 }}>
+                            <button onClick={() => saveEdit(p.id)} style={{ background:'#22c55e', border:'none', borderRadius:5, color:'#000', fontFamily:'Bebas Neue', fontSize:'0.8rem', padding:'4px 10px', cursor:'pointer' }}>✓</button>
+                            <button onClick={() => setEditingId(null)} style={{ background:'#374151', border:'none', borderRadius:5, color:'#9ca3af', fontFamily:'Bebas Neue', fontSize:'0.8rem', padding:'4px 8px', cursor:'pointer' }}>✕</button>
+                          </div>
                         </div>
+                        <input style={{ ...inputStyle, width:'100%', boxSizing:'border-box' }} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Nome do jogador" />
                       </div>
                     ) : (
                       /* Normal row */
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.63rem', padding:'2px 5px', flexShrink:0 }}>{p.position}</span>
+                        <div style={{ display:'flex', flexDirection:'column', gap:2, alignItems:'center', flexShrink:0 }}>
+                          <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.63rem', padding:'2px 5px' }}>{p.position}</span>
+                          {p.position2 && (
+                            <span style={{ background: posBg[p.position2], borderRadius:3, padding:'1px 5px', fontSize:'0.58rem', fontFamily:'Bebas Neue', letterSpacing:1, color:'#000', opacity:0.75 }}>{p.position2}</span>
+                          )}
+                        </div>
                         <span style={{ fontFamily:'Bebas Neue', fontSize:'0.95rem', color:'var(--muted)', minWidth:22, flexShrink:0 }}>#{p.number}</span>
                         <span style={{ flex:1, fontSize:'0.87rem', fontWeight:600 }}>{p.name}</span>
                         {gameStarted ? (
@@ -1197,7 +1298,7 @@ function PlayerListModal({ customPlayers, setCustomPlayers, gameStarted, complet
                 );
               })}
             </div>
-          ))}
+          );})}
         </div>
 
         {/* Footer */}
@@ -1235,8 +1336,11 @@ export default function FootballTeamBuilder() {
   const [gameStarted, setGameStarted] = useState(false);
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [customPlayers, setCustomPlayers] = useState(PLAYERS);
+  const [disabledTeams, setDisabledTeams] = useState(new Set()); // teams excluded from the deck
   const [theme, setTheme] = useState(DEFAULT_THEME);
   const [showTheme, setShowTheme] = useState(false);
+  // activePositions: { [playerId]: activePosition } — tracks which position is active for players "Na Mão"
+  const [activePositions, setActivePositions] = useState({});
 
   // Derived position colors from theme (used everywhere badges appear)
   const posBg = {
@@ -1244,16 +1348,35 @@ export default function FootballTeamBuilder() {
     VOL: theme.posVOL, MEI: theme.posMEI, ATA: theme.posATA,
   };
 
+  // Returns the currently active position for a player (may be position2 if toggled)
+  const getActivePos = (p) => activePositions[p.id] || p.position;
+
+  // Toggle a player's active position between position and position2
+  const togglePos = (p) => {
+    if (!p.position2) return;
+    setActivePositions(prev => ({
+      ...prev,
+      [p.id]: prev[p.id] === p.position2 ? p.position : p.position2,
+    }));
+  };
+
+  // When a player leaves "Na Mão", clear its active position override
+  const clearActivePos = (p) => {
+    setActivePositions(prev => { const n = {...prev}; delete n[p.id]; return n; });
+  };
+
   // ── Computed ────────────────────────────────────────────────────────────────
   const canAddToMain = (player) => {
+    const pos = getActivePos(player);
     const counts = countPositions(mainTeam);
-    return (counts[player.position] || 0) < FORMATIONS[formation][player.position];
+    return (counts[pos] || 0) < (FORMATIONS[formation][pos] || 0);
   };
 
   const canAddToReserves = (player) => {
+    const pos = getActivePos(player);
     const counts = countPositions(reserves);
     const maxRes = getMaxReservesForFormation(formation);
-    return (counts[player.position] || 0) < (maxRes[player.position] || 0);
+    return (counts[pos] || 0) < (maxRes[pos] || 0);
   };
 
   const isPositionAvailable = (pos) => FORMATIONS[formation][pos] > 0;
@@ -1268,6 +1391,7 @@ export default function FootballTeamBuilder() {
   const shouldHidePlayer = (player) => {
     if (hideUnavailablePositions && !isPositionAvailable(player.position)) return true;
     if (hideCompletedPositions && isPositionComplete(player.position)) return true;
+    if (disabledTeams.has(player.team)) return true;
     return false;
   };
 
@@ -1319,25 +1443,32 @@ export default function FootballTeamBuilder() {
   const discardPlayer = (p) => { setDiscardedThisRound([...discardedThisRound, p]); setDrawnPlayers(drawnPlayers.filter(x=>x.id!==p.id)); };
 
   const moveToMain = (p) => {
-    if (!canAddToMain(p)) { alert(`Posição ${POSITION_LABELS[p.position]} já está cheia no esquema ${formation}!`); return; }
-    setMainTeam([...mainTeam, p]);
+    const pos = getActivePos(p);
+    if (!canAddToMain(p)) { alert(`Posição ${POSITION_LABELS[pos]} já está cheia no esquema ${formation}!`); return; }
+    // Store the player with the active position as the effective position
+    const playerWithPos = pos !== p.position ? { ...p, position: pos, position2: p.position } : p;
+    setMainTeam([...mainTeam, playerWithPos]);
     setSelectedPlayers(selectedPlayers.filter(x=>x.id!==p.id));
+    clearActivePos(p);
   };
 
   const moveToReserves = (p) => {
-    if (!canAddToReserves(p)) { alert(`Banco de reservas para ${POSITION_LABELS[p.position]} já está cheio!`); return; }
-    setReserves([...reserves, p]);
+    const pos = getActivePos(p);
+    if (!canAddToReserves(p)) { alert(`Banco de reservas para ${POSITION_LABELS[pos]} já está cheio!`); return; }
+    const playerWithPos = pos !== p.position ? { ...p, position: pos, position2: p.position } : p;
+    setReserves([...reserves, playerWithPos]);
     setSelectedPlayers(selectedPlayers.filter(x=>x.id!==p.id));
+    clearActivePos(p);
   };
 
-  const removeFromSelected = (p) => { setSelectedPlayers(selectedPlayers.filter(x=>x.id!==p.id)); setDiscardedThisRound([...discardedThisRound, p]); };
+  const removeFromSelected = (p) => { setSelectedPlayers(selectedPlayers.filter(x=>x.id!==p.id)); setDiscardedThisRound([...discardedThisRound, p]); clearActivePos(p); };
   const removeFromMain = (p) => { setMainTeam(mainTeam.filter(x=>x.id!==p.id)); setSelectedPlayers([...selectedPlayers, p]); };
   const removeFromReserves = (p) => { setReserves(reserves.filter(x=>x.id!==p.id)); setSelectedPlayers([...selectedPlayers, p]); };
 
   const reset = () => {
     setFormation("4-4-2"); setDiceResult(null); setDrawnPlayers([]);
     setSelectedPlayers([]); setDiscardedThisRound([]); setMainTeam([]); setReserves([]);
-    setGameStarted(false);
+    setGameStarted(false); setActivePositions({});
   };
 
   const resetAll = () => {
@@ -1453,6 +1584,12 @@ export default function FootballTeamBuilder() {
             <div className="ftb-subtitle">Monte seu time dos sonhos com lendas do futebol</div>
           </div>
           <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            {disabledTeams.size > 0 && (
+              <span title={`Times desativados: ${[...disabledTeams].join(', ')}`}
+                style={{ fontFamily:'Bebas Neue', fontSize:'0.78rem', letterSpacing:1.5, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#ef4444', padding:'4px 10px', borderRadius:99, cursor:'default' }}>
+                ● {disabledTeams.size} time(s) off
+              </span>
+            )}
             {isTeamComplete && (
               <span className="ftb-complete-badge"><Star size={12}/> Time Completo!</span>
             )}
@@ -1503,6 +1640,8 @@ export default function FootballTeamBuilder() {
         {showPlayerList && <PlayerListModal
           customPlayers={customPlayers}
           setCustomPlayers={setCustomPlayers}
+          disabledTeams={disabledTeams}
+          setDisabledTeams={setDisabledTeams}
           gameStarted={gameStarted}
           completedTeams={completedTeams}
           mainTeam={mainTeam}
@@ -1641,18 +1780,22 @@ export default function FootballTeamBuilder() {
                   <Users size={14} /> Na Mão ({selectedPlayers.length})
                 </div>
                 {selectedPlayers.map(p => {
+                  const activePos = getActivePos(p);
                   const canMain = canAddToMain(p);
                   const canRes  = canAddToReserves(p);
                   return (
-                    <PlayerCard key={p.id} player={p} posBg={posBg} actions={
+                    <PlayerCard key={p.id} player={p} posBg={posBg}
+                      activePos={activePos}
+                      onTogglePos={p.position2 ? () => togglePos(p) : undefined}
+                      actions={
                       <>
                         {canMain && (
-                          <button className="ftb-btn btn-main" onClick={()=>moveToMain(p)} title="Titular">
+                          <button className="ftb-btn btn-main" onClick={()=>moveToMain(p)} title={`Titular como ${activePos}`}>
                             <ArrowUp size={11}/> Titular
                           </button>
                         )}
                         {canRes && (
-                          <button className="ftb-btn btn-res" onClick={()=>moveToReserves(p)} title="Reserva">
+                          <button className="ftb-btn btn-res" onClick={()=>moveToReserves(p)} title={`Reserva como ${activePos}`}>
                             <ArrowDown size={11}/> Banco
                           </button>
                         )}
