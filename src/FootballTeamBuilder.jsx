@@ -764,7 +764,7 @@ function PlayerCard({ player, actions, posBg, activePos, onTogglePos }) {
 }
 
 // ── Pitch Visual ──────────────────────────────────────────────────────────────
-function PitchView({ mainTeam, formation, onRemove, posBg }) {
+function PitchView({ mainTeam, formation, onRemove, posBg, reserves, onSubstitute }) {
   const rows = getPitchRows(mainTeam, formation);
   if (mainTeam.length === 0) {
     return (
@@ -780,14 +780,32 @@ function PitchView({ mainTeam, formation, onRemove, posBg }) {
       <div className="pitch-line" />
       {rows.map((row, ri) => (
         <div className="pitch-row" key={ri}>
-          {row.players.map(p => (
-            <div className="pitch-player" key={p.id} onClick={() => onRemove(p)} title={`Remover ${p.name}`}>
-              <div className="pitch-avatar" style={{ background: posBg[p.position] }}>
-                {p.position}
+          {row.players.map(p => {
+            const hasReserve = reserves.some(r => r.position === p.position);
+            return (
+              <div className="pitch-player" key={p.id} style={{ position:'relative' }}>
+                <div className="pitch-avatar" style={{ background: posBg[p.position] }}
+                  onClick={() => onRemove(p)} title={`Remover ${p.name}`}>
+                  {p.position}
+                </div>
+                {hasReserve && (
+                  <button
+                    onClick={(e) => onSubstitute(e, p)}
+                    title="Substituir"
+                    style={{
+                      position:'absolute', top:-6, right:-6,
+                      width:18, height:18, borderRadius:'50%',
+                      background:'#22c55e', border:'2px solid #0f1117',
+                      color:'#000', cursor:'pointer', fontSize:'0.6rem',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      padding:0, lineHeight:1, zIndex:2,
+                    }}
+                  >⇄</button>
+                )}
+                <div className="pitch-name">{p.name.split(' ')[0]}</div>
               </div>
-              <div className="pitch-name">{p.name.split(' ')[0]}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ))}
       <div className="pitch-line" style={{ marginBottom:0, marginTop:8 }} />
@@ -1592,6 +1610,7 @@ export default function FootballTeamBuilder() {
   const [showTheme, setShowTheme] = useState(false);
   // activePositions: { [playerId]: activePosition } — tracks which position is active for players "Na Mão"
   const [activePositions, setActivePositions] = useState({});
+  const [subMenu, setSubMenu] = useState(null); // { titular, x, y }
 
   // Derived position colors from theme (used everywhere badges appear)
   const posBg = {
@@ -1614,6 +1633,27 @@ export default function FootballTeamBuilder() {
   // When a player leaves "Na Mão", clear its active position override
   const clearActivePos = (p) => {
     setActivePositions(prev => { const n = {...prev}; delete n[p.id]; return n; });
+  };
+
+  // Get eligible reserves for a given titular (same position)
+  const getEligibleReserves = (titular) =>
+    reserves.filter(r => r.position === titular.position);
+
+  // Swap a titular with a reserve — titular goes to bench, reserve enters field
+  const substituir = (titular, reserva) => {
+    setMainTeam(prev => prev.map(p => p.id === titular.id ? reserva : p));
+    setReserves(prev => prev.map(r => r.id === reserva.id ? titular : r));
+    setSubMenu(null);
+  };
+
+  // Open substitution menu anchored to the click position
+  const openSubMenu = (e, titular) => {
+    e.stopPropagation();
+    const eligible = getEligibleReserves(titular);
+    if (eligible.length === 0) return;
+    if (eligible.length === 1) { substituir(titular, eligible[0]); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setSubMenu({ titular, x: rect.left, y: rect.bottom + 6 });
   };
 
   // ── Computed ────────────────────────────────────────────────────────────────
@@ -2068,7 +2108,7 @@ export default function FootballTeamBuilder() {
           <div className="ftb-panel">
             <div className="ftb-section-title">Campo — {formation}</div>
 
-            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} posBg={posBg} />
+            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} posBg={posBg} reserves={reserves} onSubstitute={openSubMenu} />
 
             {/* Reserves */}
             <div className="ftb-section-title">
@@ -2098,13 +2138,24 @@ export default function FootballTeamBuilder() {
                       <div style={{ fontSize:'0.68rem', color: posBg[pos], letterSpacing:2, marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>
                         ── {POSITION_LABELS[pos]}
                       </div>
-                      {inPos.map(p => (
-                        <PlayerCard key={p.id} player={p} posBg={posBg} actions={
-                          <button className="ftb-btn btn-remove" onClick={()=>removeFromMain(p)} title="Remover">
-                            <Trash2 size={11}/>
-                          </button>
-                        }/>
-                      ))}
+                      {inPos.map(p => {
+                        const eligible = getEligibleReserves(p);
+                        return (
+                          <PlayerCard key={p.id} player={p} posBg={posBg} actions={
+                            <>
+                              {eligible.length > 0 && (
+                                <button className="ftb-btn" onClick={(e)=>openSubMenu(e,p)} title="Substituir"
+                                  style={{ background:'#16a34a', color:'#fff', fontSize:'0.8rem', padding:'5px 7px' }}>
+                                  ⇄
+                                </button>
+                              )}
+                              <button className="ftb-btn btn-remove" onClick={()=>removeFromMain(p)} title="Remover">
+                                <Trash2 size={11}/>
+                              </button>
+                            </>
+                          }/>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -2137,6 +2188,59 @@ export default function FootballTeamBuilder() {
           </div>
         </div>
       </div>
+
+      {/* Substitution mini-menu */}
+      {subMenu && (
+        <>
+          {/* Backdrop */}
+          <div onClick={() => setSubMenu(null)}
+            style={{ position:'fixed', inset:0, zIndex:300 }} />
+          {/* Menu */}
+          <div style={{
+            position:'fixed',
+            left: Math.min(subMenu.x, window.innerWidth - 220),
+            top: subMenu.y,
+            zIndex:301,
+            background:'#181c25',
+            border:'1px solid rgba(255,255,255,0.15)',
+            borderRadius:10,
+            boxShadow:'0 8px 32px rgba(0,0,0,0.7)',
+            minWidth:200,
+            overflow:'hidden',
+          }}>
+            <div style={{ padding:'8px 12px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize:'0.62rem', color:'#7a8099', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:2 }}>
+                Substituir
+              </div>
+              <div style={{ fontSize:'0.82rem', color:'var(--gold)', fontWeight:600 }}>
+                {subMenu.titular.name}
+              </div>
+            </div>
+            <div style={{ padding:'6px 0' }}>
+              {getEligibleReserves(subMenu.titular).map(r => (
+                <button key={r.id} onClick={() => substituir(subMenu.titular, r)}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    width:'100%', background:'none', border:'none',
+                    padding:'7px 14px', cursor:'pointer', textAlign:'left',
+                    transition:'background 0.12s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background='none'}
+                >
+                  <span style={{ background: posBg[r.position], borderRadius:4, padding:'1px 6px', fontFamily:'Bebas Neue', fontSize:'0.7rem', letterSpacing:1, color:'#000', flexShrink:0 }}>
+                    {r.position}
+                  </span>
+                  <div>
+                    <div style={{ fontSize:'0.85rem', color:'#e8eaf0', fontWeight:600 }}>{r.name}</div>
+                    <div style={{ fontSize:'0.68rem', color:'#7a8099', fontStyle:'italic' }}>{r.team}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
