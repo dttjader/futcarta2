@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shuffle, Trash2, Users, ArrowDown, ArrowUp, AlertCircle, Save, Download, Trophy, ChevronDown, ChevronUp, RotateCcw, Star } from 'lucide-react';
+import { Shuffle, Trash2, Users, ArrowDown, ArrowUp, AlertCircle, Save, Download, Upload, Trophy, ChevronDown, ChevronUp, RotateCcw, Star } from 'lucide-react';
 
 const PLAYERS = [
   // Brasil 1982
@@ -8,17 +8,17 @@ const PLAYERS = [
   { id: 27, name: "Oscar", position: "ZAG", team: "Brasil 1982", number: 3 },
   { id: 28, name: "Luizinho", position: "ZAG", team: "Brasil 1982", number: 4 },
   { id: 29, name: "Toninho Cerezo", position: "VOL", team: "Brasil 1982", number: 5 },
-  { id: 30, name: "Júnior", position: "LAT", team: "Brasil 1982", number: 6 },
+  { id: 30, name: "Júnior", position: "LAT", position2: "MEI", team: "Brasil 1982", number: 6 },
   { id: 31, name: "Sócrates", position: "MEI", team: "Brasil 1982", number: 8 },
   { id: 32, name: "Zico", position: "MEI", team: "Brasil 1982", number: 10 },
   { id: 33, name: "Serginho", position: "ATA", team: "Brasil 1982", number: 9 },
-  { id: 34, name: "Falcão", position: "MEI", team: "Brasil 1982", number: 5 },
+  { id: 34, name: "Falcão", position: "VOL", position2: "MEI", team: "Brasil 1982", number: 5 },
   { id: 35, name: "Éder", position: "ATA", team: "Brasil 1982", number: 11 },
   // Brasil 1970
   { id: 36, name: "Félix", position: "GOL", team: "Brasil 1970", number: 1 },
   { id: 37, name: "Carlos Alberto", position: "LAT", team: "Brasil 1970", number: 4 },
   { id: 38, name: "Brito", position: "ZAG", team: "Brasil 1970", number: 3 },
-  { id: 39, name: "Piazza", position: "ZAG", team: "Brasil 1970", number: 2 },
+  { id: 39, name: "Piazza", position: "ZAG", position2: "VOL", team: "Brasil 1970", number: 2 },
   { id: 40, name: "Everaldo", position: "LAT", team: "Brasil 1970", number: 16 },
   { id: 41, name: "Clodoaldo", position: "VOL", team: "Brasil 1970", number: 5 },
   { id: 42, name: "Gérson", position: "MEI", team: "Brasil 1970", number: 8 },
@@ -37,19 +37,19 @@ const PLAYERS = [
   { id: 54, name: "Ronaldo", position: "ATA", team: "Brasil 2002", number: 9 },
   { id: 55, name: "Rivaldo", position: "MEI", team: "Brasil 2002", number: 10 },
   { id: 56, name: "Ronaldinho Gaúcho", position: "ATA", team: "Brasil 2002", number: 11 },
-  { id: 57, name: "Kléberson", position: "VOL", team: "Brasil 2002", number: 15 },
+  { id: 57, name: "Kléberson", position: "VOL", position2: "ATA", team: "Brasil 2002", number: 15 },
   // Grêmio 1995
   { id: 58, name: "Danrlei", position: "GOL", team: "Grêmio 1995", number: 1 },
   { id: 59, name: "Arce", position: "LAT", team: "Grêmio 1995", number: 2 },
   { id: 60, name: "Rivarola", position: "ZAG", team: "Grêmio 1995", number: 24 },
-  { id: 61, name: "Adilson", position: "ZAG", team: "Grêmio 1995", number: 4 },
+  { id: 61, name: "Adilson", position: "ZAG", position2: "VOL", team: "Grêmio 1995", number: 4 },
   { id: 62, name: "Dinho", position: "VOL", team: "Grêmio 1995", number: 5 },
   { id: 63, name: "Roger", position: "LAT", team: "Grêmio 1995", number: 6 },
   { id: 64, name: "Paulo Nunes", position: "ATA", team: "Grêmio 1995", number: 7 },
   { id: 65, name: "Goiano", position: "VOL", team: "Grêmio 1995", number: 8 },
   { id: 66, name: "Jardel", position: "ATA", team: "Grêmio 1995", number: 16 },
-  { id: 67, name: "Carlos Miguel", position: "MEI", team: "Grêmio 1995", number: 11 },
-  { id: 68, name: "Arilson", position: "MEI", team: "Grêmio 1995", number: 19 },
+  { id: 67, name: "Carlos Miguel", position: "MEI", position2: "LAT", team: "Grêmio 1995", number: 11 },
+  { id: 68, name: "Arilson", position: "MEI", position2: "LAT", team: "Grêmio 1995", number: 19 },
   // Grêmio 2017
   { id: 69, name: "Marcelo Grohe", position: "GOL", team: "Grêmio 2017", number: 1 },
   { id: 70, name: "Edilson", position: "LAT", team: "Grêmio 2017", number: 2 },
@@ -60,10 +60,10 @@ const PLAYERS = [
   { id: 75, name: "Luan", position: "MEI", team: "Grêmio 2017", number: 7 },
   { id: 76, name: "Arthur", position: "MEI", team: "Grêmio 2017", number: 29 },
   { id: 77, name: "Lucas Barrios", position: "ATA", team: "Grêmio 2017", number: 18 },
-  { id: 78, name: "Ramiro", position: "MEI", team: "Grêmio 2017", number: 17 },
+  { id: 78, name: "Ramiro", position: "VOL", position2: "LAT", team: "Grêmio 2017", number: 17 },
   { id: 79, name: "Fernandinho", position: "MEI", team: "Grêmio 2017", number: 21 },
   // Grêmio 1977
-  { id: 80, name: "Leão", position: "GOL", team: "Grêmio 1977", number: 1 },
+  { id: 80, name: "Corbo", position: "GOL", team: "Grêmio 1977", number: 1 },
   { id: 81, name: "Eurico", position: "LAT", team: "Grêmio 1977", number: 2 },
   { id: 82, name: "Ancheta", position: "ZAG", team: "Grêmio 1977", number: 3 },
   { id: 83, name: "Oberdan", position: "ZAG", team: "Grêmio 1977", number: 4 },
@@ -96,7 +96,7 @@ const PLAYERS = [
   { id: 106, name: "Batista", position: "MEI", team: "Internacional 1975", number: 8 },
   { id: 107, name: "Flávio Minuano", position: "ATA", team: "Internacional 1975", number: 9 },
   { id: 108, name: "Paulo César Carpegiani", position: "MEI", team: "Internacional 1975", number: 10 },
-  { id: 132, name: "Falcão", position: "MEI", team: "Internacional 1975", number: 5 },
+  { id: 132, name: "Falcão", position: "VOL", position2: "MEI", team: "Internacional 1975", number: 5 },
   { id: 109, name: "Lula", position: "ATA", team: "Internacional 1975", number: 11 },
   // Palmeiras 1972
   { id: 133, name: "Leão", position: "GOL", team: "Palmeiras 1972", number: 1 },
@@ -112,16 +112,64 @@ const PLAYERS = [
   { id: 118, name: "Edu Bala", position: "MEI", team: "Palmeiras 1972", number: 11 },
   // Outros Jogadores
   { id: 119, name: "Rogério Ceni", position: "GOL", team: "Outros Jogadores", number: 1 },
-  { id: 120, name: "Nelinho", position: "LAT", team: "Outros Jogadores", number: 2 },
-  { id: 121, name: "Franz Beckenbauer", position: "ZAG", team: "Outros Jogadores", number: 3 },
+  { id: 120, name: "Nelinho", position: "LAT", team: "Outros Jogadores", number: 5 },
+  { id: 121, name: "Franz Beckenbauer", position: "ZAG", position2: "VOL", team: "Outros Jogadores", number: 3 },
   { id: 122, name: "Mauro Galvão", position: "ZAG", team: "Outros Jogadores", number: 4 },
-  { id: 123, name: "Zé Carlos", position: "VOL", team: "Outros Jogadores", number: 5 },
-  { id: 124, name: "Marinho Chagas", position: "LAT", team: "Outros Jogadores", number: 6 },
-  { id: 125, name: "Capitão", position: "ATA", team: "Outros Jogadores", number: 7 },
-  { id: 126, name: "Renato Gaúcho", position: "MEI", position2: "ATA", team: "Outros Jogadores", number: 8 },
-  { id: 127, name: "Careca", position: "MEI", team: "Outros Jogadores", number: 9 },
-  { id: 128, name: "Zenon", position: "MEI", team: "Outros Jogadores", number: 10 },
-  { id: 129, name: "Bozó", position: "ATA", team: "Outros Jogadores", number: 11 }
+  { id: 123, name: "Zé Carlos", position: "VOL", team: "Outros Jogadores", number: 6 },
+  { id: 124, name: "Marinho Chagas", position: "LAT", team: "Outros Jogadores", number: 8 },
+  { id: 125, name: "Garrincha", position: "MEI", team: "Outros Jogadores", number: 7 },
+  { id: 126, name: "Juan", position: "ZAG", team: "Outros Jogadores", number: 2 },
+  { id: 127, name: "Dener", position: "MEI", team: "Outros Jogadores", number: 9 },
+  { id: 128, name: "Reinaldo", position: "ATA", team: "Outros Jogadores", number: 10 },
+  { id: 129, name: "Dirceu", position: "MEI", position2: "ATA", team: "Outros Jogadores", number: 11 },
+  // Flamengo 1981
+  { id: 136, name: "Raul", position: "GOL", team: "Flamengo 1981", number: 1 },
+  { id: 137, name: "Leandro", position: "LAT", team: "Flamengo 1981", number: 2 },
+  { id: 138, name: "Marinho", position: "ZAG", team: "Flamengo 1981", number: 3 },
+  { id: 139, name: "Mozer", position: "ZAG", team: "Flamengo 1981", number: 4 },
+  { id: 140, name: "Júnior", position: "LAT", position2: "MEI", team: "Flamengo 1981", number: 5 },
+  { id: 141, name: "Andrade", position: "VOL", team: "Flamengo 1981", number: 6 },
+  { id: 142, name: "Adílio", position: "MEI", team: "Flamengo 1981", number: 7 },
+  { id: 143, name: "Tita", position: "ATA", position2: "MEI", team: "Flamengo 1981", number: 8 },
+  { id: 144, name: "Zico", position: "MEI", position2: "ATA", team: "Flamengo 1981", number: 9 },
+  { id: 145, name: "Nunes", position: "ATA", team: "Flamengo 1981", number: 10 },
+  { id: 146, name: "Lico", position: "ATA", team: "Flamengo 1981", number: 11 },
+  // Grêmio 1983
+  { id: 147, name: "Mazaropi", position: "GOL", team: "Grêmio 1983", number: 1 },
+  { id: 148, name: "Paulo Roberto", position: "LAT", team: "Grêmio 1983", number: 2 },
+  { id: 149, name: "Baidek", position: "ZAG", team: "Grêmio 1983", number: 3 },
+  { id: 150, name: "Paulo César Magalhães", position: "LAT", team: "Grêmio 1983", number: 4 },
+  { id: 151, name: "China", position: "VOL", team: "Grêmio 1983", number: 5 },
+  { id: 152, name: "De León", position: "ZAG", team: "Grêmio 1983", number: 6 },
+  { id: 153, name: "Renato Gaúcho", position: "MEI", position2: "ATA", team: "Grêmio 1983", number: 7 },
+  { id: 154, name: "Osvaldo", position: "MEI", team: "Grêmio 1983", number: 8 },
+  { id: 155, name: "Paulo César Caju", position: "MEI", team: "Grêmio 1983", number: 9 },
+  { id: 156, name: "Mário Sérgio", position: "MEI", position2: "ATA", team: "Grêmio 1983", number: 10 },
+  { id: 157, name: "Tarciso", position: "ATA", team: "Grêmio 1983", number: 11 },
+  // Brasil 1994
+  { id: 158, name: "Taffarel", position: "GOL", team: "Brasil 1994", number: 1 },
+  { id: 159, name: "Jorginho", position: "LAT", team: "Brasil 1994", number: 2 },
+  { id: 160, name: "Branco", position: "LAT", team: "Brasil 1994", number: 6 },
+  { id: 161, name: "Aldair", position: "ZAG", team: "Brasil 1994", number: 13 },
+  { id: 162, name: "Márcio Santos", position: "ZAG", team: "Brasil 1994", number: 15 },
+  { id: 163, name: "Mauro Silva", position: "VOL", team: "Brasil 1994", number: 5 },
+  { id: 164, name: "Dunga", position: "VOL", team: "Brasil 1994", number: 8 },
+  { id: 165, name: "Zinho", position: "MEI", team: "Brasil 1994", number: 9 },
+  { id: 166, name: "Mazinho", position: "LAT", position2: "MEI", team: "Brasil 1994", number: 17 },
+  { id: 167, name: "Bebeto", position: "ATA", team: "Brasil 1994", number: 7 },
+  { id: 168, name: "Romário", position: "ATA", team: "Brasil 1994", number: 11 },
+  // Internacional 2006
+  { id: 169, name: "Clemer", position: "GOL", team: "Internacional 2006", number: 1 },
+  { id: 170, name: "Ceará", position: "LAT", team: "Internacional 2006", number: 2 },
+  { id: 171, name: "Índio", position: "ZAG", team: "Internacional 2006", number: 3 },
+  { id: 172, name: "Fabiano Eller", position: "ZAG", team: "Internacional 2006", number: 4 },
+  { id: 173, name: "Rubens Cardoso", position: "LAT", team: "Internacional 2006", number: 15 },
+  { id: 174, name: "Edinho", position: "VOL", position2: "ZAG", team: "Internacional 2006", number: 8 },
+  { id: 175, name: "Wellington Monteiro", position: "VOL", position2: "LAT", team: "Internacional 2006", number: 5 },
+  { id: 176, name: "Fernandão", position: "ATA", position2: "MEI", team: "Internacional 2006", number: 9 },
+  { id: 177, name: "Iarley", position: "ATA", team: "Internacional 2006", number: 10 },
+  { id: 178, name: "Alex", position: "MEI", team: "Internacional 2006", number: 7 },
+  { id: 179, name: "Alexandre Pato", position: "ATA", team: "Internacional 2006", number: 11 }
 ];
 
 const FORMATIONS = {
@@ -1008,6 +1056,8 @@ function PlayerListModal({ customPlayers, setCustomPlayers, disabledTeams, setDi
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState({ name:'', position:'GOL', position2:'', team:'', number:'' });
   const [addError, setAddError] = useState('');
+  const [importPreview, setImportPreview] = useState(null);
+  const [selectedTeams, setSelectedTeams] = useState(new Set());
 
   const allTeams = [...new Set(customPlayers.map(p => p.team))].sort();
 
@@ -1081,6 +1131,121 @@ function PlayerListModal({ customPlayers, setCustomPlayers, disabledTeams, setDi
   const enableAllTeams  = () => setDisabledTeams(new Set());
   const disableAllTeams = () => setDisabledTeams(new Set(allTeams));
 
+  // ── CSV / TSV helpers ────────────────────────────────────────────────────────
+  // Columns: id, name, position, position2, number, team
+  const CSV_HEADERS = ['id','name','position','position2','number','team'];
+
+  const exportCSV = (sep = ',') => {
+    const ext = sep === ',' ? 'csv' : 'tsv';
+    const escape = (v) => {
+      const s = String(v ?? '');
+      return s.includes(sep) || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+    };
+    const rows = [CSV_HEADERS.join(sep)];
+    customPlayers.forEach(p => {
+      rows.push([p.id, p.name, p.position, p.position2||'', p.number, p.team].map(escape).join(sep));
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `jogadores.${ext}`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  // importPreview = { newTeams: [{name, players}], duplicateCount: number, newCount: number, parsedPlayers: [] }
+
+  const parseFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      // Auto-detect separator
+      const firstLine = text.split('\n')[0];
+      const sep = firstLine.includes('\t') ? '\t' : ',';
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) { alert('Arquivo vazio ou inválido.'); return; }
+
+      // Parse header
+      const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
+      const col = (row, name) => {
+        const i = headers.indexOf(name);
+        if (i === -1) return '';
+        let v = row[i] ?? '';
+        v = String(v).trim();
+        if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1,-1).replace(/""/g,'"');
+        return v;
+      };
+
+      // Parse rows (handle quoted fields with commas)
+      const parseRow = (line) => {
+        const result = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+          else if (c === sep && !inQ) { result.push(cur); cur=''; }
+          else cur += c;
+        }
+        result.push(cur);
+        return result;
+      };
+
+      const existingKey = new Set(customPlayers.map(p => `${p.team}||${p.name}`.toLowerCase()));
+      const maxId = Math.max(...customPlayers.map(p => p.id), 200);
+      let nextId = maxId + 1;
+
+      const incoming = lines.slice(1).map(line => parseRow(line)).filter(row => row.length >= 3);
+
+      // Group incoming by team
+      const byTeamMap = {};
+      incoming.forEach(row => {
+        const name  = col(row, 'name');
+        const team  = col(row, 'team');
+        const pos   = col(row, 'position').toUpperCase();
+        const pos2  = col(row, 'position2').toUpperCase() || undefined;
+        const num   = parseInt(col(row, 'number')) || 1;
+        const idRaw = parseInt(col(row, 'id'));
+        if (!name || !team || !pos) return;
+
+        const key = `${team}||${name}`.toLowerCase();
+        const isDup = existingKey.has(key);
+
+        if (!byTeamMap[team]) byTeamMap[team] = { name: team, players: [], dupCount: 0, newCount: 0 };
+        if (isDup) {
+          byTeamMap[team].dupCount++;
+        } else {
+          // Assign id: use file id only if not already taken, otherwise auto-assign
+          const existingIds = new Set(customPlayers.map(p=>p.id));
+          const assignedId = (!isNaN(idRaw) && !existingIds.has(idRaw)) ? idRaw : nextId++;
+          const player = { id: assignedId, name, position: pos, number: num, team };
+          if (pos2 && pos2 !== pos) player.position2 = pos2;
+          byTeamMap[team].newCount++;
+          byTeamMap[team].players.push(player);
+        }
+      });
+
+      const allTeamsInFile = Object.values(byTeamMap);
+      const existingTeamNames = new Set(customPlayers.map(p => p.team));
+      const newTeams = allTeamsInFile.filter(t => !existingTeamNames.has(t.name) && t.players.length > 0);
+      const partialTeams = allTeamsInFile.filter(t => existingTeamNames.has(t.name) && t.players.length > 0);
+      const totalDups = allTeamsInFile.reduce((s,t) => s + t.dupCount, 0);
+      const totalNew = allTeamsInFile.reduce((s,t) => s + t.players.length, 0);
+
+      setImportPreview({ newTeams, partialTeams, totalDups, totalNew, allTeamsInFile });
+      setSelectedTeams(new Set(newTeams.map(t => t.name)));
+    };
+    reader.readAsText(file);
+  };
+
+  const confirmImport = (selectedTeamNames) => {
+    const toAdd = importPreview.allTeamsInFile
+      .filter(t => selectedTeamNames.has(t.name))
+      .flatMap(t => t.players);
+    setCustomPlayers(prev => [...prev, ...toAdd]);
+    setImportPreview(null);
+  };
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:100, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 16px', overflowY:'auto' }}>
       <div style={{ background:'#181c25', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, width:'100%', maxWidth:820 }}>
@@ -1097,6 +1262,27 @@ function PlayerListModal({ customPlayers, setCustomPlayers, disabledTeams, setDi
             >
               + Adicionar Jogador
             </button>
+          )}
+          {/* Export buttons */}
+          <button onClick={() => exportCSV(',')}
+            style={{ ...inputStyle, background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', color:'#60a5fa', cursor:'pointer', padding:'7px 12px', fontFamily:'Bebas Neue', letterSpacing:1, fontSize:'0.82rem', display:'flex', alignItems:'center', gap:5 }}
+            title="Exportar lista como CSV">
+            <Download size={12}/> CSV
+          </button>
+          <button onClick={() => exportCSV('\t')}
+            style={{ ...inputStyle, background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', color:'#60a5fa', cursor:'pointer', padding:'7px 12px', fontFamily:'Bebas Neue', letterSpacing:1, fontSize:'0.82rem', display:'flex', alignItems:'center', gap:5 }}
+            title="Exportar lista como TSV">
+            <Download size={12}/> TSV
+          </button>
+          {/* Import button */}
+          {!gameStarted && (
+            <label style={{ ...inputStyle, background:'rgba(245,200,66,0.1)', border:'1px solid rgba(245,200,66,0.3)', color:'#f5c842', cursor:'pointer', padding:'7px 12px', fontFamily:'Bebas Neue', letterSpacing:1, fontSize:'0.82rem', display:'flex', alignItems:'center', gap:5 }}
+              title="Importar jogadores de CSV/TSV">
+              <Upload size={12}/> Importar
+              <input type="file" accept=".csv,.tsv,.txt" style={{ display:'none' }}
+                onChange={e => { if (e.target.files[0]) { parseFile(e.target.files[0]); e.target.value=''; } }}
+              />
+            </label>
           )}
           <button className="ftb-action-btn danger" onClick={onClose} style={{ padding:'6px 14px' }}>✕ Fechar</button>
         </div>
@@ -1145,6 +1331,71 @@ function PlayerListModal({ customPlayers, setCustomPlayers, disabledTeams, setDi
             {addError && <div style={{ color:'#ef4444', fontSize:'0.72rem', marginTop:6 }}>⚠ {addError}</div>}
           </div>
         )}
+
+        {/* Import Preview / Confirmation */}
+        {importPreview && (() => {
+          const toggleSel = (name) => setSelectedTeams(prev => { const n=new Set(prev); n.has(name)?n.delete(name):n.add(name); return n; });
+          return (
+            <div style={{ padding:'16px 24px', background:'rgba(245,200,66,0.05)', borderBottom:'1px solid rgba(245,200,66,0.2)' }}>
+              <div style={{ fontFamily:'Bebas Neue', fontSize:'1rem', letterSpacing:2, color:'#f5c842', marginBottom:10 }}>
+                📥 Prévia da Importação
+              </div>
+              {/* Partial teams (team exists, adding new players) */}
+              {importPreview.partialTeams.length > 0 && (
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontSize:'0.68rem', color:'#22c55e', letterSpacing:1.5, textTransform:'uppercase', fontWeight:700, marginBottom:6 }}>
+                    Times já existentes — novos jogadores serão adicionados
+                  </div>
+                  {importPreview.partialTeams.map(t => (
+                    <div key={t.name} style={{ fontSize:'0.78rem', color:'var(--muted)', paddingLeft:8, marginBottom:3 }}>
+                      <span style={{ color:'var(--text)', fontWeight:600 }}>{t.name}</span>
+                      {' — '}{t.players.length} novo(s){t.dupCount>0?`, ${t.dupCount} ignorado(s) (já existe)`:''}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* New teams — ask user */}
+              {importPreview.newTeams.length > 0 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:'0.68rem', color:'#f5c842', letterSpacing:1.5, textTransform:'uppercase', fontWeight:700, marginBottom:6 }}>
+                    Times novos — selecione quais importar
+                  </div>
+                  {importPreview.newTeams.map(t => (
+                    <label key={t.name} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 8px', background:'rgba(255,255,255,0.03)', borderRadius:6, marginBottom:4, cursor:'pointer' }}>
+                      <input type="checkbox" checked={selectedTeams.has(t.name)} onChange={()=>toggleSel(t.name)}
+                        style={{ width:14, height:14, cursor:'pointer', accentColor:'#f5c842' }} />
+                      <span style={{ fontSize:'0.82rem', color:'var(--text)', fontWeight:600 }}>{t.name}</span>
+                      <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{t.players.length} jogador(es)</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {/* Summary */}
+              <div style={{ fontSize:'0.72rem', color:'var(--muted)', marginBottom:12 }}>
+                {importPreview.totalDups > 0 && <span style={{ color:'#6b7280' }}>⚠ {importPreview.totalDups} jogador(es) ignorado(s) (já existem). </span>}
+                {importPreview.totalNew > 0 && <span style={{ color:'#22c55e' }}>✓ {importPreview.totalNew} jogador(es) novo(s) disponíveis. </span>}
+                {importPreview.newTeams.length > 0 && selectedTeams.size === 0 && <span style={{ color:'#f97316' }}>Selecione ao menos um time novo para importar. </span>}
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => {
+                    const toImport = new Set([
+                      ...importPreview.partialTeams.map(t=>t.name),
+                      ...selectedTeams
+                    ]);
+                    confirmImport(toImport);
+                  }}
+                  disabled={importPreview.partialTeams.length === 0 && selectedTeams.size === 0}
+                  style={{ background:'#22c55e', border:'none', borderRadius:6, color:'#000', fontFamily:'Bebas Neue', letterSpacing:1, fontSize:'0.9rem', padding:'7px 16px', cursor:'pointer', opacity: (importPreview.partialTeams.length===0 && selectedTeams.size===0) ? 0.4 : 1 }}>
+                  ✓ Confirmar Importação
+                </button>
+                <button onClick={() => setImportPreview(null)}
+                  style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, color:'var(--muted)', fontFamily:'Bebas Neue', letterSpacing:1, fontSize:'0.9rem', padding:'7px 16px', cursor:'pointer' }}>
+                  ✕ Cancelar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Filters */}
         <div style={{ padding:'12px 24px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', gap:8 }}>
