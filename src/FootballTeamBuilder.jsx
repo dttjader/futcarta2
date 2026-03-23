@@ -180,14 +180,16 @@ const FORMATIONS = {
   "3-4-3": { GOL: 1, LAT: 0, ZAG: 3, VOL: 2, MEI: 2, ATA: 3 }
 };
 
-const MAX_RESERVES = { GOL: 1, LAT: 1, ZAG: 1, VOL: 1, MEI: 1, ATA: 1 };
+const MAX_RESERVES_TOTAL = 7;
+const MAX_RESERVES_PER_POS = { GOL: 1, LAT: 3, ZAG: 3, VOL: 3, MEI: 3, ATA: 3 };
 
-const getMaxReservesForFormation = (formation) => {
-  if (formation === "3-5-2" || formation === "3-4-3") {
-    return { GOL: 1, LAT: 0, ZAG: 1, VOL: 1, MEI: 1, ATA: 1 };
-  }
-  return MAX_RESERVES;
-};
+// Returns whether a player can be added to reserves given current reserve state
+// Rules: total<=7, GOL<=1, others<=3 per position
+function canAddReserve(reserves, position) {
+  if (reserves.length >= MAX_RESERVES_TOTAL) return false;
+  const posCount = reserves.filter(r => r.position === position).length;
+  return posCount < (MAX_RESERVES_PER_POS[position] || 3);
+}
 
 const POSITION_LABELS = {
   GOL: "Goleiro",
@@ -724,7 +726,7 @@ function getPitchRows(mainTeam, formation) {
 }
 
 // ── Player Card ───────────────────────────────────────────────────────────────
-function PlayerCard({ player, actions, posBg, activePos, onTogglePos }) {
+function PlayerCard({ player, actions, posBg, activePos, onTogglePos, outOfPosition }) {
   // activePos: the currently active position for this card (may differ from player.position if toggled)
   const effectivePos = activePos || player.position;
   const bg = (posBg || POSITION_BG)[effectivePos];
@@ -753,7 +755,13 @@ function PlayerCard({ player, actions, posBg, activePos, onTogglePos }) {
         )}
       </div>
       <div className="ftb-player-info">
-        <div className="ftb-player-name">{player.name}</div>
+        <div className="ftb-player-name" style={{ display:'flex', alignItems:'center', gap:5 }}>
+          {player.name}
+          {outOfPosition && (
+            <span title="Jogando fora da posição habitual"
+              style={{ fontSize:'0.7rem', lineHeight:1, color:'#f97316', flexShrink:0 }}>⚠</span>
+          )}
+        </div>
         <div className="ftb-player-team">{player.team}</div>
       </div>
       <div className="ftb-actions">
@@ -764,7 +772,7 @@ function PlayerCard({ player, actions, posBg, activePos, onTogglePos }) {
 }
 
 // ── Pitch Visual ──────────────────────────────────────────────────────────────
-function PitchView({ mainTeam, formation, onRemove, posBg, reserves, onSubstitute }) {
+function PitchView({ mainTeam, formation, onRemove, posBg, reserves, onSubstitute, checkOutOfPos }) {
   const rows = getPitchRows(mainTeam, formation);
   if (mainTeam.length === 0) {
     return (
@@ -788,19 +796,29 @@ function PitchView({ mainTeam, formation, onRemove, posBg, reserves, onSubstitut
                   onClick={() => onRemove(p)} title={`Remover ${p.name}`}>
                   {p.position}
                 </div>
-                {hasReserve && (
-                  <button
-                    onClick={(e) => onSubstitute(e, p)}
-                    title="Substituir"
+                <button
+                  onClick={(e) => onSubstitute(e, p)}
+                  title="Opções do jogador"
+                  style={{
+                    position:'absolute', top:-6, right:-6,
+                    width:18, height:18, borderRadius:'50%',
+                    background: hasReserve ? '#22c55e' : '#374151',
+                    border:'2px solid #0f1117',
+                    color: hasReserve ? '#000' : '#9ca3af',
+                    cursor:'pointer', fontSize:'0.65rem',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    padding:0, lineHeight:1, zIndex:2,
+                  }}
+                >⇄</button>
+                {checkOutOfPos && checkOutOfPos(p) && (
+                  <span title="Jogando fora da posição habitual"
                     style={{
-                      position:'absolute', top:-6, right:-6,
-                      width:18, height:18, borderRadius:'50%',
-                      background:'#22c55e', border:'2px solid #0f1117',
-                      color:'#000', cursor:'pointer', fontSize:'0.6rem',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      padding:0, lineHeight:1, zIndex:2,
-                    }}
-                  >⇄</button>
+                      position:'absolute', top:-6, left:-6,
+                      width:16, height:16, borderRadius:'50%',
+                      background:'#f97316', border:'2px solid #0f1117',
+                      fontSize:'0.55rem', display:'flex', alignItems:'center',
+                      justifyContent:'center', zIndex:2, lineHeight:1,
+                    }}>⚠</span>
                 )}
                 <div className="pitch-name">{p.name.split(' ')[0]}</div>
               </div>
@@ -1636,6 +1654,7 @@ export default function FootballTeamBuilder() {
   };
 
   // Get eligible reserves for a given titular (same position)
+  // Get reserves that match titular's current position
   const getEligibleReserves = (titular) =>
     reserves.filter(r => r.position === titular.position);
 
@@ -1646,12 +1665,24 @@ export default function FootballTeamBuilder() {
     setSubMenu(null);
   };
 
-  // Open substitution menu anchored to the click position
+  // Change a titular's position in-game (session only, does not touch player list)
+  const mudarPosicao = (titular, newPos) => {
+    setMainTeam(prev => prev.map(p => p.id === titular.id ? { ...p, position: newPos } : p));
+    setSubMenu(null);
+  };
+
+  // Returns true if the player is playing out of their registered positions
+  const isOutOfPosition = (player) => {
+    // Find original player data from customPlayers to get canonical positions
+    const orig = customPlayers.find(cp => cp.id === player.id);
+    if (!orig) return false;
+    const canonicalPositions = [orig.position, orig.position2].filter(Boolean);
+    return !canonicalPositions.includes(player.position);
+  };
+
+  // Open the player options menu (position change + substitutes)
   const openSubMenu = (e, titular) => {
     e.stopPropagation();
-    const eligible = getEligibleReserves(titular);
-    if (eligible.length === 0) return;
-    if (eligible.length === 1) { substituir(titular, eligible[0]); return; }
     const rect = e.currentTarget.getBoundingClientRect();
     setSubMenu({ titular, x: rect.left, y: rect.bottom + 6 });
   };
@@ -1665,9 +1696,7 @@ export default function FootballTeamBuilder() {
 
   const canAddToReserves = (player) => {
     const pos = getActivePos(player);
-    const counts = countPositions(reserves);
-    const maxRes = getMaxReservesForFormation(formation);
-    return (counts[pos] || 0) < (maxRes[pos] || 0);
+    return canAddReserve(reserves, pos);
   };
 
   const isPositionAvailable = (pos) => FORMATIONS[formation][pos] > 0;
@@ -1675,8 +1704,9 @@ export default function FootballTeamBuilder() {
   const isPositionComplete = (pos) => {
     const mc = countPositions(mainTeam);
     const rc = countPositions(reserves);
-    const maxRes = getMaxReservesForFormation(formation);
-    return (mc[pos] || 0) >= FORMATIONS[formation][pos] && (rc[pos] || 0) >= (maxRes[pos] || 0);
+    const mainFull = (mc[pos] || 0) >= (FORMATIONS[formation][pos] || 0);
+    const resFull  = !canAddReserve(reserves, pos); // full if adding one more would be blocked
+    return mainFull && resFull;
   };
 
   const shouldHidePlayer = (player) => {
@@ -1687,7 +1717,7 @@ export default function FootballTeamBuilder() {
   };
 
   const totalSlots = Object.values(FORMATIONS[formation]).reduce((a, b) => a + b, 0);
-  const maxReservesTotal = Object.values(getMaxReservesForFormation(formation)).reduce((a, b) => a + b, 0);
+  const maxReservesTotal = MAX_RESERVES_TOTAL;
   const filledSlots = mainTeam.length + reserves.length;
   const totalNeeded = totalSlots + maxReservesTotal;
   const progressPct = Math.round((filledSlots / totalNeeded) * 100);
@@ -2108,7 +2138,7 @@ export default function FootballTeamBuilder() {
           <div className="ftb-panel">
             <div className="ftb-section-title">Campo — {formation}</div>
 
-            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} posBg={posBg} reserves={reserves} onSubstitute={openSubMenu} />
+            <PitchView mainTeam={mainTeam} formation={formation} onRemove={removeFromMain} posBg={posBg} reserves={reserves} onSubstitute={openSubMenu} checkOutOfPos={isOutOfPosition} />
 
             {/* Reserves */}
             <div className="ftb-section-title">
@@ -2117,12 +2147,16 @@ export default function FootballTeamBuilder() {
             <div className="ftb-reserves-row">
               {reserves.length === 0
                 ? <span className="ftb-empty-hint">Banco vazio</span>
-                : reserves.map(p => (
-                    <div className="ftb-reserve-chip" key={p.id} onClick={()=>removeFromReserves(p)} title="Devolver">
-                      <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.65rem', padding:'2px 5px' }}>{p.position}</span>
-                      <span style={{ fontSize:'0.78rem' }}>{p.name}</span>
-                    </div>
-                  ))
+                : reserves.map(p => {
+                    const oop = isOutOfPosition(p);
+                    return (
+                      <div className="ftb-reserve-chip" key={p.id} onClick={()=>removeFromReserves(p)} title="Devolver">
+                        <span className="ftb-pos-badge" style={{ background: posBg[p.position], fontSize:'0.65rem', padding:'2px 5px' }}>{p.position}</span>
+                        <span style={{ fontSize:'0.78rem' }}>{p.name}</span>
+                        {oop && <span title="Posição fora do padrão" style={{ fontSize:'0.7rem', color:'#f97316', lineHeight:1 }}>⚠</span>}
+                      </div>
+                    );
+                  })
               }
             </div>
 
@@ -2140,15 +2174,14 @@ export default function FootballTeamBuilder() {
                       </div>
                       {inPos.map(p => {
                         const eligible = getEligibleReserves(p);
+                        const oop = isOutOfPosition(p);
                         return (
-                          <PlayerCard key={p.id} player={p} posBg={posBg} actions={
+                          <PlayerCard key={p.id} player={p} posBg={posBg} outOfPosition={oop} actions={
                             <>
-                              {eligible.length > 0 && (
-                                <button className="ftb-btn" onClick={(e)=>openSubMenu(e,p)} title="Substituir"
-                                  style={{ background:'#16a34a', color:'#fff', fontSize:'0.8rem', padding:'5px 7px' }}>
-                                  ⇄
-                                </button>
-                              )}
+                              <button className="ftb-btn" onClick={(e)=>openSubMenu(e,p)} title="Opções do jogador"
+                                style={{ background: eligible.length > 0 ? '#16a34a' : '#374151', color: eligible.length > 0 ? '#fff' : '#9ca3af', fontSize:'0.8rem', padding:'5px 7px' }}>
+                                ⇄
+                              </button>
                               <button className="ftb-btn btn-remove" onClick={()=>removeFromMain(p)} title="Remover">
                                 <Trash2 size={11}/>
                               </button>
@@ -2190,57 +2223,92 @@ export default function FootballTeamBuilder() {
       </div>
 
       {/* Substitution mini-menu */}
-      {subMenu && (
-        <>
-          {/* Backdrop */}
-          <div onClick={() => setSubMenu(null)}
-            style={{ position:'fixed', inset:0, zIndex:300 }} />
-          {/* Menu */}
-          <div style={{
-            position:'fixed',
-            left: Math.min(subMenu.x, window.innerWidth - 220),
-            top: subMenu.y,
-            zIndex:301,
-            background:'#181c25',
-            border:'1px solid rgba(255,255,255,0.15)',
-            borderRadius:10,
-            boxShadow:'0 8px 32px rgba(0,0,0,0.7)',
-            minWidth:200,
-            overflow:'hidden',
-          }}>
-            <div style={{ padding:'8px 12px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ fontSize:'0.62rem', color:'#7a8099', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:2 }}>
-                Substituir
+      {subMenu && (() => {
+        const t = subMenu.titular;
+        const orig = customPlayers.find(cp => cp.id === t.id);
+        const canonicalPos = orig ? [orig.position, orig.position2].filter(Boolean) : [t.position];
+        const otherPos = ['GOL','LAT','ZAG','VOL','MEI','ATA'].filter(p => !canonicalPos.includes(p));
+        const eligibleSubs = getEligibleReserves(t);
+        const menuLeft = Math.min(subMenu.x, window.innerWidth - 260);
+        const menuTop = Math.min(subMenu.y, window.innerHeight - 420);
+        const btnStyle = (active, warn) => ({
+          display:'flex', alignItems:'center', gap:8,
+          width:'100%', background: active ? 'rgba(245,200,66,0.12)' : 'none',
+          border:'none', padding:'6px 14px', cursor:'pointer', textAlign:'left',
+          transition:'background 0.12s',
+        });
+        return (
+          <>
+            <div onClick={() => setSubMenu(null)} style={{ position:'fixed', inset:0, zIndex:300 }} />
+            <div style={{
+              position:'fixed', left: menuLeft, top: menuTop, zIndex:301,
+              background:'#181c25', border:'1px solid rgba(255,255,255,0.15)',
+              borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.7)',
+              minWidth:240, maxHeight:440, overflowY:'auto',
+            }}>
+              {/* Header */}
+              <div style={{ padding:'8px 14px 7px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize:'0.58rem', color:'#7a8099', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:2 }}>Opções</div>
+                <div style={{ fontSize:'0.9rem', color:'var(--gold)', fontWeight:600 }}>{t.name}</div>
+                <div style={{ fontSize:'0.7rem', color:'#7a8099', fontStyle:'italic' }}>{t.team} · jogando como {t.position}</div>
               </div>
-              <div style={{ fontSize:'0.82rem', color:'var(--gold)', fontWeight:600 }}>
-                {subMenu.titular.name}
+
+              {/* Section: canonical positions */}
+              <div style={{ padding:'5px 0 2px' }}>
+                <div style={{ fontSize:'0.58rem', color:'#7a8099', letterSpacing:2, textTransform:'uppercase', fontWeight:700, padding:'4px 14px 2px' }}>Posições do jogador</div>
+                {canonicalPos.map(pos => (
+                  <button key={pos} onClick={() => mudarPosicao(t, pos)}
+                    style={btnStyle(t.position === pos)}
+                    onMouseEnter={e => { if (t.position !== pos) e.currentTarget.style.background='rgba(255,255,255,0.06)'; }}
+                    onMouseLeave={e => { if (t.position !== pos) e.currentTarget.style.background='none'; }}>
+                    <span style={{ background: posBg[pos], borderRadius:4, padding:'1px 7px', fontFamily:'Bebas Neue', fontSize:'0.72rem', letterSpacing:1, color:'#000', flexShrink:0 }}>{pos}</span>
+                    <span style={{ fontSize:'0.82rem', color: t.position === pos ? 'var(--gold)' : '#e8eaf0' }}>
+                      {POSITION_LABELS[pos]}
+                      {t.position === pos && <span style={{ fontSize:'0.65rem', color:'#22c55e', marginLeft:6 }}>● atual</span>}
+                    </span>
+                  </button>
+                ))}
               </div>
+
+              {/* Section: alternative positions */}
+              <div style={{ padding:'4px 0 2px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize:'0.58rem', color:'#f97316', letterSpacing:2, textTransform:'uppercase', fontWeight:700, padding:'4px 14px 2px' }}>Posições alternativas ⚠</div>
+                {otherPos.map(pos => (
+                  <button key={pos} onClick={() => mudarPosicao(t, pos)}
+                    style={btnStyle(t.position === pos)}
+                    onMouseEnter={e => { if (t.position !== pos) e.currentTarget.style.background='rgba(249,115,22,0.06)'; }}
+                    onMouseLeave={e => { if (t.position !== pos) e.currentTarget.style.background='none'; }}>
+                    <span style={{ background: posBg[pos], borderRadius:4, padding:'1px 7px', fontFamily:'Bebas Neue', fontSize:'0.72rem', letterSpacing:1, color:'#000', flexShrink:0 }}>{pos}</span>
+                    <span style={{ fontSize:'0.82rem', color: t.position === pos ? '#f97316' : '#9ca3af' }}>
+                      {POSITION_LABELS[pos]}
+                      {t.position === pos && <span style={{ fontSize:'0.65rem', color:'#f97316', marginLeft:6 }}>⚠ fora do padrão</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Section: substitutes */}
+              {eligibleSubs.length > 0 && (
+                <div style={{ padding:'4px 0 6px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize:'0.58rem', color:'#22c55e', letterSpacing:2, textTransform:'uppercase', fontWeight:700, padding:'4px 14px 2px' }}>Substituir por</div>
+                  {eligibleSubs.map(r => (
+                    <button key={r.id} onClick={() => substituir(t, r)}
+                      style={btnStyle(false)}
+                      onMouseEnter={e => e.currentTarget.style.background='rgba(34,197,94,0.08)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ background: posBg[r.position], borderRadius:4, padding:'1px 7px', fontFamily:'Bebas Neue', fontSize:'0.72rem', letterSpacing:1, color:'#000', flexShrink:0 }}>{r.position}</span>
+                      <div>
+                        <div style={{ fontSize:'0.85rem', color:'#e8eaf0', fontWeight:600 }}>{r.name}</div>
+                        <div style={{ fontSize:'0.65rem', color:'#7a8099', fontStyle:'italic' }}>{r.team}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div style={{ padding:'6px 0' }}>
-              {getEligibleReserves(subMenu.titular).map(r => (
-                <button key={r.id} onClick={() => substituir(subMenu.titular, r)}
-                  style={{
-                    display:'flex', alignItems:'center', gap:8,
-                    width:'100%', background:'none', border:'none',
-                    padding:'7px 14px', cursor:'pointer', textAlign:'left',
-                    transition:'background 0.12s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
-                  onMouseLeave={e => e.currentTarget.style.background='none'}
-                >
-                  <span style={{ background: posBg[r.position], borderRadius:4, padding:'1px 6px', fontFamily:'Bebas Neue', fontSize:'0.7rem', letterSpacing:1, color:'#000', flexShrink:0 }}>
-                    {r.position}
-                  </span>
-                  <div>
-                    <div style={{ fontSize:'0.85rem', color:'#e8eaf0', fontWeight:600 }}>{r.name}</div>
-                    <div style={{ fontSize:'0.68rem', color:'#7a8099', fontStyle:'italic' }}>{r.team}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
     </>
   );
 }
